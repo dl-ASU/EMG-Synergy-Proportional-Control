@@ -1,1 +1,0 @@
-after change the signal length that make the models better , overcome overshotting 
