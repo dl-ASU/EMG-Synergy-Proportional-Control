@@ -1,1 +1,2 @@
-# EMG-Sameh
+# EMG Project 
+
