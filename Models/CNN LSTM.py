@@ -1,12 +1,13 @@
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
-        self.flatten = nn.Flatten()  # ((n+ 2p -f) / st ) +1  # 16
-        self.ff= nn.Linear(12,1728) # 12**3
-        self.conv1 = nn.Conv1d(8164, 1024, kernel_size=3, stride=1, padding=1)   #18
+        # ((n+ 2p -f) / st ) +1  # 16
+        self.ff= nn.Linear(12,1728) # 12**3                (203, 12246, 12)                 (203,12246,1728)    (203,12246,108,16)   16*108 = 1728
+                                                                                                    # reshape (203*12246 , 108 , 16)                                                                                              
+        self.conv1 = nn.Conv1d(108, 256, kernel_size=3, stride=1, padding=1)   #16
         self.relu1 = nn.ReLU()
         self.pool1 = nn.MaxPool1d(kernel_size=2, stride=2) # 2  # b2t 9
-        self.conv2 = nn.Conv1d(1024, 512, kernel_size=3, stride=1, padding=1)   #  9
+        self.conv2 = nn.Conv1d(256, 512, kernel_size=3, stride=1, padding=1)   #  8
         self.relu2 = nn.ReLU()
         self.pool2 = nn.MaxPool1d(kernel_size=2, stride=2) #  Floor((n-f+2p)/s) +1  #4
         self.flatten = nn.Flatten()
@@ -18,7 +19,7 @@ class CNN(nn.Module):
     def forward(self, x):
         x= self.ff(x)
         #x.size(0)
-        x = x.view(-1, 8164, 18)  # 18*8164 = 12* 12246
+        x = x.view(x.size(0)*x.size(1), 108, 16)  
         x = self.conv1(x)
         x = self.relu1(x)
         x = self.pool1(x)
@@ -56,25 +57,25 @@ class MyLSTMModel(nn.Module):
 input_dim = 14
 output_dim = 14
 hidden_dim = 64
-num_layers = 1
-batch_size = 50
+num_layers = 3    #(N,L,D*H)
+batch_size = 2
 
 
 import torch
 import torch.nn as nn
 
 class CombinedModel(nn.Module):
-    def __init__(self, cnn_model, lstm_model):
+    def __init__(self):
         super(CombinedModel, self).__init__()
-        self.cnn_model = cnn_model
-        self.lstm_model = lstm_model
+        self.cnn_model = CNN()
+        self.lstm_model = MyLSTMModel(input_dim, hidden_dim, num_layers, output_dim)
 
     def forward(self, x):
         # Forward pass through CNN
         cnn_output = self.cnn_model(x)
 
-        # Reshape CNN output to fit LSTM input shape
-        cnn_output = cnn_output.view(cnn_output.size(0), -1, cnn_output.size(-1))
+        # Reshape CNN output to fit LSTM input shape  output of cnn  (203 * 12246, 14)   # lstm input  
+        cnn_output = cnn_output.view(-1, 12246,14)
 
         # Forward pass through LSTM using CNN output
         lstm_output = self.lstm_model(cnn_output)
@@ -82,15 +83,15 @@ class CombinedModel(nn.Module):
         return lstm_output
 
 # Create instances of your CNN and LSTM models
-cnn_model = CNN()
-lstm_model = MyLSTMModel(input_dim, hidden_dim, num_layers, output_dim)
+# cnn_model = CNN()
+# lstm_model = MyLSTMModel(input_dim, hidden_dim, num_layers, output_dim)
 
-if torch.cuda.is_available():
-    cnn_model = cnn_model.to('cuda')
-    lstm_model = lstm_model.to('cuda')
+# if torch.cuda.is_available():
+#     cnn_model = cnn_model.to('cuda')
+#     lstm_model = lstm_model.to('cuda')
 
 # Create the combined model
-combined_model = CombinedModel(cnn_model, lstm_model)
+combined_model = CombinedModel().to('cuda')
 
 # Print the combined model architecture
 print(combined_model)
