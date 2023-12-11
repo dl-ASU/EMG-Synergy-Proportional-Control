@@ -1,2 +1,0 @@
-# EMG Project 
-
